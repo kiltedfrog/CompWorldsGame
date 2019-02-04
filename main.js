@@ -268,6 +268,7 @@ function SpaceExplosion(game, shipXMid, shipYMid) {
   this.name = "Effect";
   this.xMid = shipXMid;
   this.yMid = shipYMid;
+  this.lifetime = 100;
   //console.log("middle explosion: " + this.xMid + ", " + this.yMid);
   this.x = this.xMid - ((this.pWidth * this.scale) / 2);
   this.y = this.yMid - ((this.pHeight * this.scale) / 2);
@@ -281,6 +282,10 @@ SpaceExplosion.prototype.draw = function () {
 }
 
 SpaceExplosion.prototype.update = function () {
+	this.lifetime--;
+	if (this.lifetime < 1){
+		this.removeFromWorld = true;
+	}
   /*if (this.animation.elapsedTime < this.animation.totalTime)
 	this.x += this.game.clockTick * this.speed;
   if (this.x > 800) this.x = -230;*/
@@ -293,6 +298,7 @@ function GroundExplosion(game, spritesheet, shipX, shipY) {
   this.ctx = game.ctx;
   this.x = shipX;
   this.y = shipY;
+  this.lifetime = 100;
 }
 
 GroundExplosion.prototype.draw = function () {
@@ -301,10 +307,85 @@ GroundExplosion.prototype.draw = function () {
 }
 
 GroundExplosion.prototype.update = function () {
+	this.lifetime--;
+	if (this.lifetime < 1){
+	this.removeFromWorld = true;
+	}
+
+}
+
+function BloodSplatter(game, shipXMid, shipYMid) {
+  this.pWidth = 32;
+  this.pHeight = 32;
+  this.scale = 2;
+  //spriteSheet, frameWidth, frameHeight, sheetWidth, frameDuration, frames, loop, scale
+  this.animation = new Animation(AM.getAsset("./img/BloodSplatter.png"),
+								 this.pWidth, this.pHeight,
+								 7,  0.13, 7, false, this.scale);
+  this.game = game;
+  this.ctx = game.ctx;
+  this.name = "Effect";
+  this.xMid = shipXMid;
+  this.yMid = shipYMid;
+  this.lifetime = 100;
+  //console.log("middle explosion: " + this.xMid + ", " + this.yMid);
+  this.x = this.xMid - ((this.pWidth * this.scale) / 2);
+  this.y = this.yMid - ((this.pHeight * this.scale) / 2);
+  this.removeFromWorld = false; //need to remove from world when animation finishes.
+}
+
+BloodSplatter.prototype.draw = function () {
+  this.animation.drawFrame(this.game.clockTick, this.ctx, this.x, this.y);
+  //console.log("explosion: " + this.x + ", " + this.y);
+  Entity.prototype.draw.call(this);
+}
+
+BloodSplatter.prototype.update = function () {
+	this.lifetime--;
+	if (this.lifetime < 1){
+		this.removeFromWorld = true;
+	}
 
 }
 
 
+function BossExplosion(game, xIn, yIn, chain) {
+  this.pWidth = 128;
+  this.pHeight = 128;
+  this.scale = 1;
+  //spriteSheet, frameWidth, frameHeight, sheetWidth, frameDuration, frames, loop, scale
+  this.animation = new Animation(AM.getAsset("./img/BossExplosion.png"),
+								 this.pWidth, this.pHeight,
+								 24,  0.2, 24, false, this.scale);
+  this.game = game;
+  this.ctx = game.ctx;
+  this.name = "Effect";
+  this.x = xIn;
+  this.y = yIn;
+  this.chain = chain - 1
+  this.lifetime = 100;
+
+  this.removeFromWorld = false; //need to remove from world when animation finishes.
+}
+
+BossExplosion.prototype.draw = function () {
+  this.animation.drawFrame(this.game.clockTick, this.ctx, this.x, this.y);
+  //console.log("explosion: " + this.x + ", " + this.y);
+  Entity.prototype.draw.call(this);
+}
+
+BossExplosion.prototype.update = function () {
+	this.lifetime--;
+	if (this.lifetime < 1){
+		this.removeFromWorld = true;
+	}
+	if (this.chain > 1){
+		var chainedExplosion = new BossExplosion (this.game, this.x, this.y+115, this.chain-1);
+		this.game.addEntity(chainedExplosion);
+		this.chain = 0;
+	}
+
+}
 
 /* ========================================================================================================== */
 // Boss 1
@@ -319,6 +400,8 @@ function Boss1(game){
     this.name = "Enemy";
     this.x = Math.random() * (this.ctx.canvas.width-200);
     this.y = this.ctx.canvas.height + 500;
+	this.xMid = this.x - this.pWidth/2;
+	this.yMid = this.y - this.pHeight/2;
     this.angle = 0;
     this.speed = 100;
     this.removeFromWorld = false;
@@ -341,9 +424,13 @@ Boss1.prototype.update = function () {
 	//console.log("boss is updating");
 	this.y -= this.game.clockTick * this.speed;
 
+	this.xMid = this.x - this.pWidth/2;
+	this.yMid = this.y - this.pHeight/2;
+
 	if (this.turretsRemaining === 0) {
 		SCORE += 5;
-
+		var explosion = new BossExplosion(this.game, this.x, this.y, 3);
+		this.game.addEntity(explosion);
 		this.removeFromWorld = true;
 	}
 
@@ -424,7 +511,8 @@ BossTurret.prototype.update = function () {
 		SCORE += 3;
 
 		this.boss.turretsRemaining--;
-
+		var explosion = new BossExplosion(this.game, this.x, this.y, 0);
+		this.game.addEntity(explosion);
         this.removeFromWorld = true;
     }
 	for (var i = 0; i<this.game.playerProjectiles.length; i++){
@@ -618,6 +706,8 @@ Scourge.prototype.update = function () {
 		if (Collide(this, ent)) {
 			this.health -= ent.damage;
 			ent.removeFromWorld = true;
+			var splatter = new BloodSplatter(this.game, this.xMid, this.yMid);
+			this.game.addEntity (splatter);
 			if (this.health < 1) {
 				break;
 			}
@@ -686,7 +776,8 @@ function TheShip(game) {
 
 	this.name = "Player";
 	this.health = 100;
-	this.boost = 1000;
+	this.boostMax = 1000;
+	this.boost = this.boostMax;
 	this.speed = 0.5;
 	this.boosting = false;
 	this.cancelBoost = false;
@@ -734,7 +825,9 @@ TheShip.prototype.update = function () {
 	if (!this.game.boost && !this.rolling) {
 		this.boosting = false;
 		this.speed = 0.5;
-		this.boost += this.boostGainRate;
+		if (this.boost < this.boostMax){
+			this.boost += this.boostGainRate;
+		}
 	}
 
 	// boost input buffer during rolls
@@ -1304,15 +1397,18 @@ AM.queueDownload("./img/shipBoostRoll.png");
 AM.queueDownload("./img/shipReticle.png");
 AM.queueDownload("./img/shipPrimary1.png");
 AM.queueDownload("./img/shipSecondary1.png");
-AM.queueDownload("./img/Boss1.png");
-AM.queueDownload("./img/BossTurret.png");
-AM.queueDownload("./img/LaserBlast.png");
-
+//Extras
 AM.queueDownload("./img/spreader.png");
 
 // enemies
 AM.queueDownload("./img/scourge.png");
+AM.queueDownload("./img/Boss1.png");
+AM.queueDownload("./img/BossTurret.png");
+AM.queueDownload("./img/LaserBlast.png");
 
+//effects
+AM.queueDownload("./img/BloodSplatter.png");
+AM.queueDownload("./img/BossExplosion.png");
 AM.queueDownload("./img/SpaceExplosion.png");
 
 AM.downloadAll(function () {
