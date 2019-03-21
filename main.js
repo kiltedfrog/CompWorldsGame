@@ -226,12 +226,14 @@ Animation.prototype.drawFrame = function (tick, ctx, x, y, angle, game) {
 	} else if ((this.frameWidth*this.scale) < (this.frameHeight * this.scale)) {
 	  xOffset = (this.frameHeight * this.scale) - (this.frameWidth * this.scale);
 	}
-
+	// console.log(`${this.window.width} ${this.window.height} offScreen check
+	// 			${this.size} = size`);
 	offscreenCanvas.width = size;
 	offscreenCanvas.height = size;
 	var offscreenCtx = offscreenCanvas.getContext('2d');
 
 	var thirdCanvas = document.createElement('canvas');
+
 	thirdCanvas.width = size;
 	thirdCanvas.height = size;
 	var thirdCtx = thirdCanvas.getContext('2d');
@@ -275,6 +277,7 @@ function Camera(game){
 	this.x = this.game.ship.xMid - this.ctx.canvas.width/2;
 	this.y = this.game.ship.yMid - this.ctx.canvas.height/2;
 	this.isScrolling = false;
+	this.scrollCheck = 0;
 	this.deadzoneRatio = 3;
 
 
@@ -289,7 +292,6 @@ Camera.prototype.draw = function (cameraCtx) {
 };
 
 Camera.prototype.update = function () {
-	console.log(this.isScrolling);
 	//console.log(`${this.x} x, ${this.y} y,
 	//	 				${this.ctx.canvas.width} CW, ${this.ctx.canvas.height} CH`);
 	// this.game.reticle.x =
@@ -300,21 +302,37 @@ Camera.prototype.update = function () {
 
 
 	//deadzone bounding box logic
-	if(this.game.ship.xMid > this.x + this.ctx.canvas.width-(this.ctx.canvas.width/this.deadzoneRatio)){
-		this.x = this.game.ship.xMid - (this.ctx.canvas.width-(this.ctx.canvas.width/this.deadzoneRatio));
-		this.isScrolling = true;
+	this.scrollCheck--;
+
+	if (this.scrollCheck < 0) {
+		this.scrollCheck = 5;
 	}
-	if(this.game.ship.yMid > this.y + this.ctx.canvas.height-(this.ctx.canvas.height/this.deadzoneRatio)){
-		this.y = this.game.ship.yMid - (this.ctx.canvas.height-(this.ctx.canvas.height/this.deadzoneRatio));
+
+	var reset = true;
+
+	if(this.game.ship.xMid > this.x + this.ctx.canvas.width - (this.ctx.canvas.width / this.deadzoneRatio)) {
+		this.x = this.game.ship.xMid - (this.ctx.canvas.width - (this.ctx.canvas.width / this.deadzoneRatio));
 		this.isScrolling = true;
+		reset = false;
 	}
-	if(this.game.ship.xMid < this.x + (this.ctx.canvas.width/this.deadzoneRatio)){
-		this.x = this.game.ship.xMid - (this.ctx.canvas.width/this.deadzoneRatio);
+	if(this.game.ship.yMid > this.y + this.ctx.canvas.height - (this.ctx.canvas.height / this.deadzoneRatio)) {
+		this.y = this.game.ship.yMid - (this.ctx.canvas.height - (this.ctx.canvas.height / this.deadzoneRatio));
 		this.isScrolling = true;
+		reset = false;
 	}
-	if(this.game.ship.yMid < this.y + (this.ctx.canvas.height/this.deadzoneRatio)){
-		this.y = this.game.ship.yMid - (this.ctx.canvas.height/this.deadzoneRatio);
+	if(this.game.ship.xMid < this.x + (this.ctx.canvas.width / this.deadzoneRatio)) {
+		this.x = this.game.ship.xMid - (this.ctx.canvas.width / this.deadzoneRatio);
 		this.isScrolling = true;
+		reset = false;
+	}
+	if(this.game.ship.yMid < this.y + (this.ctx.canvas.height / this.deadzoneRatio)) {
+		this.y = this.game.ship.yMid - (this.ctx.canvas.height / this.deadzoneRatio);
+		this.isScrolling = true;
+		reset = false;
+	}
+
+	if (this.scrollCheck === 0 && reset) {
+		this.isScrolling = false;
 	}
 
 	//bounds the edge of the background so we don't draw in the void
@@ -453,10 +471,10 @@ function BackgroundLayer(game, spritesheet) {
 	this.xScrollRate = Number.parseFloat(this.ctx.canvas.width / spritesheet.naturalWidth).toFixed(4);
 	this.yScrollRate = Number.parseFloat(this.ctx.canvas.height / spritesheet.naturalHeight).toFixed(4);
 	if(this.xScrollRate < 1) {
-		this.xScrollRate = spritesheet.naturalWidth / this.ctx.canvas.width;
+		this.xScrollRate = Number.parseFloat(spritesheet.naturalWidth / this.ctx.canvas.width).toFixed(4);
 	}
 	if(this.yScrollRate < 1) {
-		this.yScrollRate = spritesheet.naturalHeight / this.ctx.canvas.Height;
+		this.yScrollRate = Number.parseFloat(spritesheet.naturalHeight / this.ctx.canvas.Height).toFixed(4);
 	}
 };
 
@@ -480,8 +498,8 @@ BackgroundLayer.prototype.update = function () {
 	//change image position.
 	this.dx += differenceX / this.xScrollRate;
 	this.dy += differenceY / this.yScrollRate;
-	//console.log(`${(differenceX / this.xScrollRate)} =(${differenceX} / ${this.xScrollRate})`);
-	//console.log(`${(differenceY / this.yScrollRate)} =(${differenceY} / ${this.yScrollRate})`);
+	// console.log(`${this.dx + (differenceX / this.xScrollRate)} =(${differenceX} / ${this.xScrollRate}) and ${this.game.camera.x} camX`);
+	// console.log(`${this.dy + (differenceY / this.yScrollRate)} =(${differenceY} / ${this.yScrollRate}) and ${this.game.camera.y} camY`);
 
 };
 /* ========================================================================================================== */
@@ -490,6 +508,8 @@ BackgroundLayer.prototype.update = function () {
 
 var AM = new AssetManager();
 //Background
+AM.queueDownload("./img/level1mainAlt.png");
+AM.queueDownload("./img/gasGiantsNebulaLayer.png");
 AM.queueDownload("./img/space1-1.png");
 AM.queueDownload("./img/PScroll1/space.png");
 AM.queueDownload("./img/PScroll1/cloud.png");
@@ -502,6 +522,9 @@ AM.queueDownload("./img/PScroll1/BackgroundMedium.png");
 AM.queueDownload("./img/PScroll1/BackgroundVariant.png");
 AM.queueDownload("./img/PScroll1/Starfield1-1.png");
 AM.queueDownload("./img/PScroll1/Background3k.png");
+
+AM.queueDownload("./img/levelThreeBackground.png");
+AM.queueDownload("./img/levelThreeForeground.png");
 
 AM.queueDownload("./img/BloodSplatter.png");
 
@@ -537,7 +560,25 @@ AM.queueDownload("./img/shipSecondary3.png");
 AM.queueDownload("./img/shipDamage1.png");
 AM.queueDownload("./img/shipDamage2.png");
 
+// HUD
+AM.queueDownload("./img/hudOverlay.png");
+AM.queueDownload("./img/hudMinimapBorder.png");
+AM.queueDownload("./img/hudRollIcon.png");
+AM.queueDownload("./img/hudLaserIcon.png");
+AM.queueDownload("./img/hudWaveIcon.png");
+AM.queueDownload("./img/hudBulletIcon.png");
+AM.queueDownload("./img/hudBurstIcon.png");
+AM.queueDownload("./img/hudMissileIcon.png");
+AM.queueDownload("./img/hudHomingIcon.png");
+AM.queueDownload("./img/hudChargeIcon.png");
+AM.queueDownload("./img/hudOrbiterIcon.png");
+
 //Allies
+AM.queueDownload("./img/allyDrone.png");
+AM.queueDownload("./img/allyShip1.png");
+AM.queueDownload("./img/allyShip2.png");
+AM.queueDownload("./img/allyBase.png");
+
 AM.queueDownload("./img/GreenChroma.png");
 AM.queueDownload("./img/PurpleChroma.png");
 AM.queueDownload("./img/RedChroma.png");
@@ -549,14 +590,6 @@ AM.queueDownload("./img/PlayerBuilder.png");
 //Terrain
 AM.queueDownload("./img/Asteroid.png");
 
-//Allies
-AM.queueDownload("./img/GreenChroma.png");
-AM.queueDownload("./img/PurpleChroma.png");
-AM.queueDownload("./img/RedChroma.png");
-AM.queueDownload("./img/BlackWhiteChroma.png");
-AM.queueDownload("./img/MechanicalResourceGatherer.png");
-AM.queueDownload("./img/SpaceStation.png");
-
 //drops and powerups
 AM.queueDownload("./img/healthRefill.png");
 AM.queueDownload("./img/multishot.png");
@@ -565,6 +598,21 @@ AM.queueDownload("./img/damageUp.png");
 AM.queueDownload("./img/scrap.png");
 
 // enemies
+AM.queueDownload("./img/enemyScourge.png");
+AM.queueDownload("./img/enemyScourgeDeath.png");
+AM.queueDownload("./img/enemyDefiler.png");
+AM.queueDownload("./img/enemyGuardian.png");
+AM.queueDownload("./img/enemyGuardianDeath.png");
+AM.queueDownload("./img/enemyDrone.png");
+AM.queueDownload("./img/enemyQueen.png");
+AM.queueDownload("./img/enemyQueenDeath.png");
+AM.queueDownload("./img/enemyBase.png");
+AM.queueDownload("./img/enemySpitProjectile.png");
+AM.queueDownload("./img/enemySpitProjectileHit.png");
+AM.queueDownload("./img/bossWorm1.png");
+AM.queueDownload("./img/bossWorm2.png");
+AM.queueDownload("./img/bossWorm3.png");
+
 AM.queueDownload("./img/Boss1.png");
 AM.queueDownload("./img/BossTurret.png");
 AM.queueDownload("./img/LaserBlast.png");
@@ -580,7 +628,11 @@ AM.queueDownload("./img/SpawnDoor.png");
 
 AM.queueDownload("./img/SpaceExplosion.png");
 AM.queueDownload("./img/SPACEFIGHT.png");
-AM.queueDownload("./img/splash.png")
+AM.queueDownload("./img/plutoSplashPixel.png");
+//AM.queueDownload("./img/splash.png")
+AM.queueDownload("./img/splash.png");
+AM.queueDownload("./img/TutorialSceneLines.png");
+AM.queueDownload("./img/asteroidNebula.png");
 
 AM.downloadAll(function () {
 	console.log("starting up da sheild");
@@ -589,14 +641,18 @@ AM.downloadAll(function () {
 	var canvas = document.createElement('canvas');
 	var ctx = canvas.getContext("2d");
 
+
 	var gameEngine = new GameEngine();
 	gameEngine.ctx = ctx;
 	gameEngine.init(ctx, cameraCtx);
 	gameEngine.running = false;
 
+
+	var sm = new SceneManager(gameEngine);
 	var ship = new TheShip(gameEngine);
 	var reticle = new Reticle(gameEngine);
-	var sm = new SceneManager(gameEngine);
+
+
 
 	gameEngine.addEntity(ship);
 	gameEngine.addEntity(reticle);

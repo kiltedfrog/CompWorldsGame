@@ -3,6 +3,7 @@
 /* ========================================================================================================== */
 
 function TheShip(game) {
+	//console.log("new ship");
 	this.game = game;
 	this.ctx = game.ctx;
 	this.pWidth = 128;
@@ -39,7 +40,8 @@ function TheShip(game) {
 	}
 
 	this.name = "Player";
-	this.health = 100;
+	this.healthMax = 100;
+	this.health = this.healthMax;
 	this.boostMax = 1000;
 	this.boost = this.boostMax;
 	this.speed = 0.5;
@@ -80,6 +82,7 @@ function TheShip(game) {
 
 	// miscellaneous
 	this.boostGainRate = 1;
+	//this.boostConsumeRate = 2;
 	this.boostConsumeRate = 2;
 	this.bombAmmo = 0;
 
@@ -169,20 +172,20 @@ TheShip.prototype.update = function () {
 	}
 	if (xMove === 0) {
 		this.y += yMove;
-		if(this.game.camera.isScrolling){
+		if(!BOSS_LEVEL && this.game.camera.isScrolling){
 			this.game.mouseY += yMove;
 		}
 	}
 	else if (yMove === 0) {
 		this.x += xMove;
-		if(this.game.camera.isScrolling){
+		if(!BOSS_LEVEL && this.game.camera.isScrolling){
 			this.game.mouseX += xMove;
 		}
 	}
 	else {
 		this.x += xMove * 0.7;
 		this.y += yMove * 0.7;
-		if(this.game.camera.isScrolling){
+		if(!BOSS_LEVEL && this.game.camera.isScrolling){
 			this.game.mouseX += xMove * 0.7;
 	 		this.game.mouseY += yMove * 0.7;
 		}
@@ -377,16 +380,16 @@ TheShip.prototype.update = function () {
 	if (!this.game.fireSecondary && this.secondaryType === 2 && this.charge > 0.5) {
 		if (this.charge > 1) {
 			if (this.primaryType === 0) {	// laser
-				for (var i = 0; i < 10; i++) {
+				for (var i = 0; i < 5; i++) {
 					this.createChargeShot("P0", Math.random() * Math.pow(-1, i) / 4, 0, 0);
 				}
 				if (this.multishotLevel > 0) {
-					for (var i = 0; i < 10; i++) {
+					for (var i = 0; i < 5; i++) {
 						this.createChargeShot("P0", Math.random() * Math.pow(-1, i) / 4, 0, 0);
 					}
 				}
 				if (this.multishotLevel > 1) {
-					for (var i = 0; i < 10; i++) {
+					for (var i = 0; i < 5; i++) {
 						this.createChargeShot("P0", Math.random() * Math.pow(-1, i) / 4, 0, 0);
 					}
 				}
@@ -538,7 +541,7 @@ TheShip.prototype.createChargeShot = function(type, offset, adjustAngle, spreadN
 	}
 	if (type === "P2") {
 		var projectile = new ShipPrimary2(this.game, 1 * this.charge);
-		projectile.maxSpeed *= Math.random();
+		projectile.maxSpeed *= 0.5 + Math.random();
 	}
 	if (type === "P3") {
 		var projectile = new ShipPrimary3(this.game, 1 * this.charge);
@@ -939,7 +942,7 @@ ShipPrimary3.prototype.update = function () {
 	this.yMid = (this.y + (this.pHeight * this.scale / 2)) - 1;
 
 	this.lifetime -= 1;
-	if (this.lifetime < 0) {
+	if (this.lifetime < 1) {
 		this.removeFromWorld = true;
 
 		var projectile = new ShipPrimary3Blast(this.game, this.scale);

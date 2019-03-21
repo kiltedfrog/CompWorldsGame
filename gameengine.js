@@ -113,7 +113,7 @@ GameEngine.prototype.startInput = function () {
 		that.mouseX = (e.x - 7 + that.camera.x);
 		that.mouseY = (e.y - 7 + that.camera.y);
 		that.wasclicked = true;
-		// console.log(e);
+		console.log(e);
 		// console.log("Left Click Event - X,Y " + e.clientX + ", " + e.clientY);
 	}, false);
 
@@ -183,7 +183,14 @@ GameEngine.prototype.startInput = function () {
 		that.wheel = e;
 	}, false);
 
+	this.cameraCtx.canvas.addEventListener("mouseout", function (e) {
+		if (that.running) {
+			that.paused = true;
+		}
+	}, false);
+
 	this.cameraCtx.canvas.addEventListener("keydown", function (e) {
+		//console.log("input: " + e.code);
 		e.preventDefault();
 		if (e.code === "KeyW") {
 			that.moveUp = true;
@@ -208,7 +215,10 @@ GameEngine.prototype.startInput = function () {
 			that.roll = true;
 		}
 		if (e.code === "Enter") {
-			that.clicked = true;
+			that.select = true;
+			//that.clicked = true;
+			//console.log(e);
+			that.sceneManager.update();
 		}
 		if(e.code === "KeyP") {
 			if(that.paused === true) {
@@ -224,6 +234,7 @@ GameEngine.prototype.startInput = function () {
 		if(e.code === "Escape") {
 			//console.log("menu");
 			that.menu = true;
+			that.sceneManager.update();
 		}
 	}, false);
 
@@ -274,16 +285,16 @@ GameEngine.prototype.addEntity = function (entity) {
 	// console.log('added entity');
 	// this.entities.push(entity);
 
-	if(entity.name == "Element") {
+	if(entity.name === "Element") {
 		this.elements.push(entity);
 	}
-	if(entity.name == "Ally") {
+	if(entity.name === "Ally") {
 		this.allies.push(entity);
 	}
-	if(entity.name == "Terrain") {
+	if(entity.name === "Terrain") {
 		this.terrain.push(entity);
 	}
-	if(entity.name == "Reticle") {
+	if(entity.name === "Reticle") {
 		this.reticle.push(entity);
 	}
 	if (entity.name === "Level") {
@@ -348,9 +359,6 @@ GameEngine.prototype.draw = function () {
 		this.allies[i].draw(this.ctx);
 	}
 
-
-
-
 	for (var i = 0; i < this.enemyProjectiles.length; i++) {
 		this.enemyProjectiles[i].draw(this.ctx);
 	}
@@ -401,7 +409,7 @@ if(this.paused === false) {
 	// 	}
 	// }
 
-	this.sceneManager.update();
+	//this.sceneManager.update();
 
 	this.camera.update();
 	var count = this.background.length;
@@ -558,11 +566,11 @@ if(this.paused === false) {
 			entity.update();
 		}
 	}
-	count = this.reticle.length;
+	count = this.levels.length;
 	for (var i = 0; i < count; i++) {
-		var entity = this.reticle[i];
+		var entity = this.levels[i];
 		if (entity.removeFromWorld) {
-			this.reticle.splice(i, 1);
+			this.levels.splice(i, 1);
 			count--;
 			i--;
 		}
@@ -579,6 +587,19 @@ if(this.paused === false) {
 	this.swapPrimary = false;
 	this.swapSecondary = false;
 	} //end of if
+	// always draw reticle
+	count = this.reticle.length;
+	for (var i = 0; i < count; i++) {
+		var entity = this.reticle[i];
+		if (entity.removeFromWorld) {
+			this.reticle.splice(i, 1);
+			count--;
+			i--;
+		}
+		else {
+			entity.update();
+		}
+	}
 }
 
 GameEngine.prototype.loop = function () {
@@ -647,6 +668,9 @@ Entity.prototype.takeDamage = function(damage) {
 	}
 }
 Entity.prototype.generateScrap = function (count, value){
+	if (BOSS_LEVEL) {
+		return;
+	}
 	for(var i = 0; i < count; i++){
 		var scrap = new Scrap(this.game, value);
 		scrap.x = this.xMid - (scrap.pWidth*scrap.scale /2);
@@ -661,11 +685,28 @@ Entity.prototype.generateScrap = function (count, value){
 Entity.prototype.generateItem = function(bonusChance) {
 	var dice = Math.random() * 100 - bonusChance;
 
+	if (BOSS_LEVEL) {
+		dice -= 40;
+	}
+
 	if (dice < 20) {
 		dice = Math.random() * 100;
 
 		if (dice < 20) {
 			var powerUp = new HealthRefill(this.game);
+
+			if (this.game.ship.health === this.game.ship.healthMax) {
+				dice = Math.random() * 100;
+				if (dice < 30) {
+					var powerUp = new SpeedUp(this.game);
+				}
+				else if (dice < 60) {
+					var powerUp = new Multishot(this.game);
+				}
+				else {
+					var powerUp = new DamageUp(this.game);
+				}
+			}
 		}
 		else if (dice < 45) {
 			var powerUp = new SpeedUp(this.game);
